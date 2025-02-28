@@ -1,0 +1,83 @@
+version: '3.8'
+
+services:
+  # Serviço de API Backend
+  backend:
+    build: ./backend
+    volumes:
+      - ./backend:/app
+      - backend_venv:/app/.venv
+    ports:
+      - "8000:8000"
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017
+      - NEO4J_URI=bolt://neo4j:7687
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      - mongodb
+      - neo4j
+    networks:
+      - insight-network
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  # Serviço de Frontend
+  frontend:
+    build: ./frontend
+    volumes:
+      - ./frontend:/app
+      - flutter_cache:/root/.pub-cache
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - insight-network
+    command: flutter run -d web-server --web-port=3000 --web-hostname=0.0.0.0
+
+  # Banco de Dados MongoDB
+  mongodb:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+      - ./mongodb/init-scripts:/docker-entrypoint-initdb.d
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=password
+    networks:
+      - insight-network
+
+  # Banco de Dados Neo4j
+  neo4j:
+    image: neo4j:latest
+    ports:
+      - "7474:7474"  # Interface web
+      - "7687:7687"  # Bolt protocol
+    volumes:
+      - neo4j_data:/data
+      - neo4j_logs:/logs
+    environment:
+      - NEO4J_AUTH=neo4j/password
+    networks:
+      - insight-network
+
+  # Serviço Redis para cache
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - insight-network
+
+networks:
+  insight-network:
+    driver: bridge
+
+volumes:
+  mongodb_data:
+  neo4j_data:
+  neo4j_logs:
+  backend_venv:
+  flutter_cache:
