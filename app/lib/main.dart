@@ -3,6 +3,11 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:path_provider/path_provider.dart' as path_provider;
+import 'core/config/routes.dart';
+import 'core/config/themes.dart';
+import 'app/modules/home/home_binding.dart';
+import 'app/modules/home/home_page.dart';
+import 'services/storage_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -11,6 +16,13 @@ Future<void> main() async {
   final appDocumentDirectory = 
       await path_provider.getApplicationDocumentsDirectory();
   await Hive.initFlutter(appDocumentDirectory.path);
+  
+  // Initialize storage service
+  final storageService = StorageService();
+  await storageService.init();
+  
+  // Register service for dependency injection
+  Get.put(storageService);
   
   // Set preferred orientations
   await SystemChrome.setPreferredOrientations([
@@ -22,33 +34,20 @@ Future<void> main() async {
 }
 
 class InsightTrackerApp extends StatelessWidget {
-  const InsightTrackerApp({Key? key}) : super(key: key);
+  const InsightTrackerApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return GetMaterialApp(
       title: 'Insight Tracker',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF6750A4),
-          brightness: Brightness.light,
-        ),
-      ),
-      darkTheme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF6750A4),
-          brightness: Brightness.dark,
-        ),
-      ),
+      theme: AppThemes.lightTheme,
+      darkTheme: AppThemes.darkTheme,
       themeMode: ThemeMode.system,
-      home: const Scaffold(
-        body: Center(
-          child: Text('Insight Tracker - Project Setup Complete'),
-        ),
-      ),
+      initialRoute: AppRoutes.HOME,
+      getPages: AppRoutes.routes,
+      initialBinding: HomeBinding(),
+      home: const HomePage(),
     );
   }
 }
