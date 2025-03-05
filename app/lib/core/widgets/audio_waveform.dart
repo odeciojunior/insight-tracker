@@ -2,19 +2,21 @@ import 'package:flutter/material.dart';
 
 class AudioWaveform extends StatelessWidget {
   final List<double> levels;
+  final List<double> waveData;
   final Color color;
   final double height;
   final double width;
   final bool isRecording;
-
+  
   const AudioWaveform({
-    Key? key,
+    super.key,
     required this.levels,
     this.color = Colors.blue,
     this.height = 60,
     this.width = double.infinity,
     this.isRecording = false,
-  }) : super(key: key);
+    required this.waveData,
+  });
 
   @override
   Widget build(BuildContext context) {

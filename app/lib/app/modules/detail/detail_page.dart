@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import '../../controllers/insight_controller.dart';
+
+import '../../../core/config/routes.dart';
 import '../../../core/models/insight_model.dart';
 import '../../../core/widgets/loading_indicator.dart';
-import '../../../core/config/routes.dart';
+import '../../controllers/insight_controller.dart';
 
 class DetailPage extends StatelessWidget {
   const DetailPage({Key? key}) : super(key: key);

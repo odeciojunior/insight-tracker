@@ -33,6 +33,10 @@ class RecorderController extends GetxController {
   // Timer for updating audio levels
   Timer? _levelTimer;
 
+  // Waveform data for visualization
+  final RxList<double> waveData = <double>[].obs;
+  final int maxWaveDataPoints = 100; // Number of data points to show in the waveform
+
   // Is voice recognition available
   final isVoiceRecognitionAvailable = false.obs;
 

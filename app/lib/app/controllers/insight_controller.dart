@@ -75,6 +75,20 @@ class InsightController extends GetxController {
     }
   }
   
+  // Get a single insight by ID
+  Future<Insight?> getInsight(String insightId) async {
+    try {
+      isLoading.value = true;
+      final insight = _storageService.getInsight(insightId);
+      return insight;
+    } catch (e) {
+      errorMessage.value = 'Failed to get insight: $e';
+      return null;
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
   // Update an existing insight
   Future<void> updateInsight(Insight updatedInsight) async {
     try {

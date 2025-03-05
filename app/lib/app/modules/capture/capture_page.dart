@@ -288,6 +288,7 @@ class _CapturePageState extends State<CapturePage> {
                     height: 100,
                     width: double.infinity,
                     color: Theme.of(context).colorScheme.primary,
+                    levels: _recorderController.audioLevels,
                   )
                 : const SizedBox.shrink(),
             ),
