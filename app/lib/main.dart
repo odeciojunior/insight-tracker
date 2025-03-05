@@ -9,6 +9,7 @@ import 'app/modules/home/home_page.dart';
 import 'core/config/routes.dart';
 import 'core/config/themes.dart';
 import 'services/storage_service.dart';
+import 'app/controllers/category_controller.dart'; // Add this import
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,6 +23,9 @@ Future<void> main() async {
   final storageService = StorageService();
   await storageService.init();
   Get.put(storageService);
+  
+  // Register CategoryController for global access
+  Get.put(CategoryController());
   
   // Set preferred orientations
   await SystemChrome.setPreferredOrientations([
