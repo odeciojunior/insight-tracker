@@ -17,11 +17,9 @@ Future<void> main() async {
       await path_provider.getApplicationDocumentsDirectory();
   await Hive.initFlutter(appDocumentDirectory.path);
   
-  // Initialize storage service
+  // Initialize and register the storage service
   final storageService = StorageService();
   await storageService.init();
-  
-  // Register service for dependency injection
   Get.put(storageService);
   
   // Set preferred orientations

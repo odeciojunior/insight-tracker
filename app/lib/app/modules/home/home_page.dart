@@ -36,39 +36,7 @@ class HomePage extends StatelessWidget {
         }
 
         if (insightController.insights.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(
-                  Icons.lightbulb_outline,
-                  size: 80,
-                  color: Colors.grey,
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  'No insights yet',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Tap the + button to capture your first insight',
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 24),
-                ElevatedButton.icon(
-                  icon: const Icon(Icons.add),
-                  label: const Text('Capture Insight'),
-                  onPressed: () {
-                    Get.toNamed(AppRoutes.CAPTURE);
-                  },
-                ),
-              ],
-            ),
-          );
+          return _buildEmptyState();
         }
 
         return ListView.builder(
@@ -76,78 +44,16 @@ class HomePage extends StatelessWidget {
           itemBuilder: (context, index) {
             final insight = insightController.insights[index];
             return InsightCard(
+              id: insight.id, // Added missing id parameter
               title: insight.title,
               content: insight.content,
               tags: insight.tags,
               createdAt: insight.createdAt,
               onTap: () {
-                // TODO: Navigate to insight details
+                Get.toNamed(AppRoutes.DETAIL, arguments: insight.id);
               },
               onLongPress: () {
-                // Show options menu
-                Get.bottomSheet(
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surface,
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(16),
-                        topRight: Radius.circular(16),
-                      ),
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        ListTile(
-                          leading: const Icon(Icons.edit),
-                          title: const Text('Edit'),
-                          onTap: () {
-                            // TODO: Navigate to edit page
-                            Get.back();
-                          },
-                        ),
-                        ListTile(
-                          leading: const Icon(Icons.delete),
-                          title: const Text('Delete'),
-                          onTap: () {
-                            Get.back();
-                            Get.dialog(
-                              AlertDialog(
-                                title: const Text('Delete Insight'),
-                                content: const Text(
-                                  'Are you sure you want to delete this insight?',
-                                ),
-                                actions: [
-                                  TextButton(
-                                    child: const Text('Cancel'),
-                                    onPressed: () {
-                                      Get.back();
-                                    },
-                                  ),
-                                  TextButton(
-                                    child: const Text('Delete'),
-                                    onPressed: () {
-                                      insightController.deleteInsight(insight.id);
-                                      Get.back();
-                                    },
-                                  ),
-                                ],
-                              ),
-                            );
-                          },
-                        ),
-                        ListTile(
-                          leading: const Icon(Icons.share),
-                          title: const Text('Share'),
-                          onTap: () {
-                            // TODO: Implement share functionality
-                            Get.back();
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                );
+                _showOptionsMenu(context, insightController, insight);
               },
             );
           },
@@ -158,6 +64,128 @@ class HomePage extends StatelessWidget {
           Get.toNamed(AppRoutes.CAPTURE);
         },
         child: const Icon(Icons.add),
+      ),
+    );
+  }
+
+  // Extracted empty state to a separate method
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(
+            Icons.lightbulb_outline,
+            size: 80,
+            color: Colors.grey,
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'No insights yet',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Tap the + button to capture your first insight',
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 24),
+          ElevatedButton.icon(
+            icon: const Icon(Icons.add),
+            label: const Text('Capture Insight'),
+            onPressed: () {
+              Get.toNamed(AppRoutes.CAPTURE);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Extracted options menu to a separate method
+  void _showOptionsMenu(BuildContext context, InsightController controller, dynamic insight) {
+    // Check if insight is null or missing id
+    if (insight == null || insight.id == null) {
+      Get.snackbar('Error', 'Cannot perform operations on this insight');
+      return;
+    }
+
+    Get.bottomSheet(
+      Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(16),
+            topRight: Radius.circular(16),
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.edit),
+              title: const Text('Edit'),
+              onTap: () {
+                Get.back();
+                Get.toNamed(AppRoutes.EDIT, arguments: insight.id);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete),
+              title: const Text('Delete'),
+              onTap: () {
+                Get.back();
+                _showDeleteConfirmation(context, controller, insight.id);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.share),
+              title: const Text('Share'),
+              onTap: () {
+                Get.back();
+                // TODO: Implement share functionality
+                Get.snackbar('Coming Soon', 'Share functionality will be available in the next update');
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Extracted delete confirmation to a separate method
+  void _showDeleteConfirmation(BuildContext context, InsightController controller, String insightId) {
+    Get.dialog(
+      AlertDialog(
+        title: const Text('Delete Insight'),
+        content: const Text(
+          'Are you sure you want to delete this insight?',
+        ),
+        actions: [
+          TextButton(
+            child: const Text('Cancel'),
+            onPressed: () {
+              Get.back();
+            },
+          ),
+          TextButton(
+            child: const Text('Delete'),
+            onPressed: () async {
+              try {
+                await controller.deleteInsight(insightId);
+                Get.back();
+                Get.snackbar('Success', 'Insight deleted successfully');
+              } catch (e) {
+                Get.back();
+                Get.snackbar('Error', 'Failed to delete insight: ${e.toString()}');
+              }
+            },
+          ),
+        ],
       ),
     );
   }
