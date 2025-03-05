@@ -13,6 +13,9 @@ class AppRoutes {
   static const String MINDMAP = '/mindmap';
   static const String SETTINGS = '/settings';
   static const String LOGIN = '/login';
+  static const String EDIT = '/edit';
+  static const String DETAIL = '/detail';
+  static const String REGISTER = '/register';
   
   
   // GetX route definitions

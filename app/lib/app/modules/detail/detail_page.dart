@@ -1,20 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:insight_tracker/app/data/models/insight.dart';
 
 import '../../../core/config/routes.dart';
-import '../../../core/models/insight_model.dart';
 import '../../../core/widgets/loading_indicator.dart';
 import '../../controllers/insight_controller.dart';
 
 class DetailPage extends StatelessWidget {
-  const DetailPage({Key? key}) : super(key: key);
+  const DetailPage({super.key});
 
   @override
   Widget build(BuildContext context) {
     final insightId = Get.arguments as String;
     final insightController = Get.find<InsightController>();
     
-    return FutureBuilder<InsightModel?>(
+    return FutureBuilder<Insight?>(
       future: insightController.getInsight(insightId),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -83,7 +83,7 @@ class DetailPage extends StatelessWidget {
     );
   }
   
-  Widget _buildDateInfo(BuildContext context, InsightModel insight) {
+  Widget _buildDateInfo(BuildContext context, Insight insight) {
     final theme = Theme.of(context);
     final createdAt = '${insight.createdAt.day}/${insight.createdAt.month}/${insight.createdAt.year}';
     

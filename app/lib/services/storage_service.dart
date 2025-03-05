@@ -1,7 +1,9 @@
+import 'package:flutter/material.dart'; // Add import for Color and Icons
 import 'package:hive/hive.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import '../app/data/models/insight.dart';
+
 import '../app/data/models/category.dart';
+import '../app/data/models/insight.dart';
 import '../app/data/models/relationship.dart';
 
 class StorageService {
@@ -16,29 +18,40 @@ class StorageService {
   late Box<dynamic> _settingsBox;
 
   Future<void> init() async {
-    // Register adapters
-    if (!Hive.isAdapterRegistered(0)) {
-      Hive.registerAdapter(InsightAdapter());
-    }
-    if (!Hive.isAdapterRegistered(2)) {
-      Hive.registerAdapter(RelationshipTypeAdapter());
-    }
-    if (!Hive.isAdapterRegistered(3)) {
-      Hive.registerAdapter(RelationshipAdapter());
-    }
-    if (!Hive.isAdapterRegistered(4)) {
-      Hive.registerAdapter(CategoryAdapter());
-    }
+    try {
+      // Register adapters with unique type IDs
+      if (!Hive.isAdapterRegistered(0)) {
+        Hive.registerAdapter(InsightAdapter());
+      }
+      if (!Hive.isAdapterRegistered(1)) {
+        Hive.registerAdapter(RelationshipTypeAdapter());
+      }
+      if (!Hive.isAdapterRegistered(2)) {
+        Hive.registerAdapter(RelationshipAdapter());
+      }
+      if (!Hive.isAdapterRegistered(3)) {
+        Hive.registerAdapter(CategoryAdapter());
+      }
+      if (!Hive.isAdapterRegistered(4)) {
+        Hive.registerAdapter(ColorAdapter());
+      }
+      if (!Hive.isAdapterRegistered(5)) {
+        Hive.registerAdapter(IconDataAdapter());
+      }
 
-    // Open boxes
-    _insightsBox = await Hive.openBox<Insight>(INSIGHTS_BOX);
-    _relationshipsBox = await Hive.openBox<Relationship>(RELATIONSHIPS_BOX);
-    _categoriesBox = await Hive.openBox<Category>(CATEGORIES_BOX);
-    _settingsBox = await Hive.openBox(SETTINGS_BOX);
+      // Open boxes
+      _insightsBox = await Hive.openBox<Insight>(INSIGHTS_BOX);
+      _relationshipsBox = await Hive.openBox<Relationship>(RELATIONSHIPS_BOX);
+      _categoriesBox = await Hive.openBox<Category>(CATEGORIES_BOX);
+      _settingsBox = await Hive.openBox(SETTINGS_BOX);
 
-    // Add default categories if empty
-    if (_categoriesBox.isEmpty) {
-      _addDefaultCategories();
+      // Add default categories if empty
+      if (_categoriesBox.isEmpty) {
+        _addDefaultCategories();
+      }
+    } catch (e) {
+      print('Error initializing storage: $e');
+      rethrow; // Rethrow to allow caller to handle the error
     }
   }
 

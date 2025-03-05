@@ -1,12 +1,14 @@
 import 'package:get/get.dart';
-import '../data/models/insight.dart';
+
 import '../../services/storage_service.dart';
+import '../data/models/insight.dart';
 
 class InsightController extends GetxController {
   final StorageService _storageService = Get.find<StorageService>();
   
   // Observable list of insights
   final insights = <Insight>[].obs;
+  final insight = Insight;
   
   // Loading state
   final isLoading = false.obs;
@@ -76,10 +78,10 @@ class InsightController extends GetxController {
   }
   
   // Get a single insight by ID
-  Future<Insight?> getInsight(String insightId) async {
+  Future<Insight?> getInsight(String id) async {
     try {
       isLoading.value = true;
-      final insight = _storageService.getInsight(insightId);
+      final insight = _storageService.getInsight(id);
       return insight;
     } catch (e) {
       errorMessage.value = 'Failed to get insight: $e';
@@ -90,7 +92,7 @@ class InsightController extends GetxController {
   }
 
   // Update an existing insight
-  Future<void> updateInsight(Insight updatedInsight) async {
+  Future<void> updateInsight(Insight updatedInsight, String id) async {
     try {
       isLoading.value = true;
       
@@ -98,9 +100,9 @@ class InsightController extends GetxController {
       await _storageService.saveInsight(updatedInsight);
       
       // Update in list
-      final index = insights.indexWhere((i) => i.id == updatedInsight.id);
+      final index = insights.indexWhere((i) => i.id == id);
       if (index >= 0) {
-        insights[index] = updatedInsight;
+        insights[index] = updatedInsight.copyWith(categoryId: id);
       }
       
       Get.snackbar(

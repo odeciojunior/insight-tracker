@@ -1,9 +1,10 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import '../../controllers/insight_controller.dart';
-import '../../../core/models/insight_model.dart';
+
 import '../../../core/widgets/loading_indicator.dart';
-import '../../../core/config/routes.dart';
+import '../../controllers/insight_controller.dart';
+import '../../data/models/insight.dart';
 
 class EditPage extends StatefulWidget {
   const EditPage({Key? key}) : super(key: key);
@@ -195,12 +196,16 @@ class _EditPageState extends State<EditPage> {
       });
 
       try {
+        var insight = Insight.create(
+          title: _titleController.text.trim(),
+          content: _contentController.text.trim(),
+        );
+
         final insightController = Get.find<InsightController>();
+        
         await insightController.updateInsight(
-          _insightId!,
-          _titleController.text.trim(),
-          _contentController.text.trim(),
-          _tags,
+          insight, 
+          _insightId!
         );
 
         Get.back();

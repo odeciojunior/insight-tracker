@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:get_storage/get_storage.dart';
+import 'package:insight_tracker/app/services/storage/get_storage.dart'; // Add this line to import StorageService
 
 class ThemeService extends GetxController {
-  final _box = GetStorage();
+  final _box = GetStorage(); 
   final _key = 'isDarkMode';
   
   // Observable to track theme changes

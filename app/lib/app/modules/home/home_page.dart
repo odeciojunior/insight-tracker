@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import '../../controllers/insight_controller.dart';
+
+import '../../../core/config/routes.dart';
 import '../../../core/widgets/insight_card.dart';
 import '../../../core/widgets/loading_indicator.dart';
-import '../../../core/config/routes.dart';
+import '../../controllers/insight_controller.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -44,7 +45,6 @@ class HomePage extends StatelessWidget {
           itemBuilder: (context, index) {
             final insight = insightController.insights[index];
             return InsightCard(
-              id: insight.id, // Added missing id parameter
               title: insight.title,
               content: insight.content,
               tags: insight.tags,
