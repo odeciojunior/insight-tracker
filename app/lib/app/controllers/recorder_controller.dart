@@ -1,13 +1,17 @@
-import 'dart:async';  // Added to fix Timer errors
+import 'dart:async';
 import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:record/record.dart';
+import 'package:speech_to_text/speech_recognition_error.dart';
+import 'package:speech_to_text/speech_recognition_result.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
 class RecorderController extends GetxController {
   // Audio recorder
+  // Make sure we're using a concrete implementation, not an abstract class
   final _audioRecorder = Record();
   
   // Speech to text
@@ -35,9 +39,14 @@ class RecorderController extends GetxController {
   @override
   void onInit() async {
     super.onInit();
-    // Initialize speech to text
-    isVoiceRecognitionAvailable.value = 
-        await _speechToText.initialize(onError: _onSpeechError);
+    try {
+      // Initialize speech to text
+      isVoiceRecognitionAvailable.value = 
+          await _speechToText.initialize(onError: _onSpeechError);
+    } catch (e) {
+      debugPrint('Error initializing speech recognition: $e');
+      isVoiceRecognitionAvailable.value = false;
+    }
   }
   
   @override
@@ -83,6 +92,7 @@ class RecorderController extends GetxController {
         );
       }
     } catch (e) {
+      debugPrint('Error in startRecording: $e');
       Get.snackbar(
         'Error',
         'Failed to start recording: $e',
@@ -109,6 +119,7 @@ class RecorderController extends GetxController {
         return path;
       }
     } catch (e) {
+      debugPrint('Error in stopRecording: $e');
       Get.snackbar(
         'Error',
         'Failed to stop recording: $e',

@@ -19,7 +19,7 @@ dependencies:
   hive_flutter: ^1.1.0
   shared_preferences: ^2.2.0
   sqflite: ^2.3.0
-  path_provider: ^2.1.1
+  path_provider: ^2.0.15
   
   # UI
   flutter_animate: ^4.2.0
@@ -32,8 +32,8 @@ dependencies:
   dio_cache_interceptor: ^3.4.2
   
   # Native Features
-  record: ^5.2.1
-  speech_to_text: ^7.0.0
+  record: ^4.4.4
+  speech_to_text: ^6.1.1
   flutter_local_notifications: ^18.0.1
   
   # Utils

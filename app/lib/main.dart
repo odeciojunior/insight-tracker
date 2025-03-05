@@ -3,10 +3,11 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:path_provider/path_provider.dart' as path_provider;
-import 'core/config/routes.dart';
-import 'core/config/themes.dart';
+
 import 'app/modules/home/home_binding.dart';
 import 'app/modules/home/home_page.dart';
+import 'core/config/routes.dart';
+import 'core/config/themes.dart';
 import 'services/storage_service.dart';
 
 Future<void> main() async {

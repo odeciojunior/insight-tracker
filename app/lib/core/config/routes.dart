@@ -12,6 +12,8 @@ class AppRoutes {
   static const String CAPTURE = '/capture';
   static const String MINDMAP = '/mindmap';
   static const String SETTINGS = '/settings';
+  static const String LOGIN = '/login';
+  
   
   // GetX route definitions
   static final List<GetPage> routes = [
