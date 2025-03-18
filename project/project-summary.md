@@ -41,12 +41,13 @@ Além da funcionalidade principal de captura e visualização, o sistema também
 
 Esta visão geral é complementada pelos seguintes documentos detalhados:
 
-1. Especificações Técnicas do Backend
-2. Especificações Técnicas do Frontend
-3. Arquitetura de Banco de Dados
-4. Ambiente de Desenvolvimento
-5. Infraestrutura de Containers
-6. Plano de Implementação de IA
-7. Roadmap e Cronograma
+[Estrutura do Projeto](./project-structure.md)
+1. [Especificações Técnicas do Backend](./backend-specs.md)
+2. [Especificações Técnicas do Frontend](./frontend-specs.md)
+3. [Arquitetura de Banco de Dados](./database-architecture.md)
+4. [Ambiente de Desenvolvimento](./development-environment.md)
+5. [Infraestrutura de Containers](./infrastructure-containers.md)
+6. [Plano de Implementação de IA](./ai-implementation.md)
+7. [Roadmap e Cronograma](./roadmap-schedule.md)
 
 Cada documento fornece detalhes específicos sobre sua respectiva área, incluindo requisitos técnicos, ferramentas necessárias e considerações de implementação.
