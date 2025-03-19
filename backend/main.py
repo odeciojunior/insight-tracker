@@ -3,6 +3,8 @@ from fastapi import FastAPI
 from app.core.config import settings
 from app.db.base import init_databases, close_databases
 from app.api.router import api_router
+from app.middleware.cache import CacheMiddleware
+from app.middleware.rate_limit import RateLimitMiddleware
 
 logger = logging.getLogger(__name__)
 
@@ -11,6 +13,10 @@ app = FastAPI(
     version=settings.VERSION,
     description=settings.DESCRIPTION,
 )
+
+# Add middleware
+app.add_middleware(RateLimitMiddleware)
+app.add_middleware(CacheMiddleware)
 
 @app.on_event("startup")
 async def startup_event():
