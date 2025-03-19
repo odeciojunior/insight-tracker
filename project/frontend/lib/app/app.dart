@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../utils/connectivity_service.dart';
 import '../services/api_service.dart';
+import 'data/providers/api_provider_module.dart';
 
 class App extends StatelessWidget {
   const App({Key? key}) : super(key: key);
@@ -29,7 +30,10 @@ class App extends StatelessWidget {
     Get.put(ConnectivityService(), permanent: true);
     
     // ApiService is a singleton, just ensure it's initialized
-    ApiService();
+    Get.put(ApiService(), permanent: true);
+    
+    // Initialize API providers
+    ApiProviderModule.init();
     
     // Other services initialization
   }
