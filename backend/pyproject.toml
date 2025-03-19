@@ -1,0 +1,83 @@
+[tool.poetry]
+name = "insight-tracker"
+version = "0.1.0"
+description = "Sistema para rastreamento e análise de insights"
+authors = ["Insight Tracker Team"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+fastapi = "^0.100.0"
+uvicorn = "^0.22.0"
+gunicorn = "^21.2.0"
+pydantic = "^2.4.0"
+pydantic-settings = "^2.0.0"
+python-multipart = "^0.0.6"
+python-jose = {extras = ["cryptography"], version = "^3.3.0"}
+passlib = {extras = ["bcrypt"], version = "^1.7.4"}
+sqlalchemy = "^2.0.0"
+alembic = "^1.11.0"
+psycopg2 = "^2.9.6"
+asyncpg = "^0.27.0"
+python-dotenv = "^1.0.0"
+httpx = "^0.24.0"
+structlog = "^23.1.0"
+tenacity = "^8.2.0"
+email-validator = "^2.0.0"
+ruff = "^0.1.0"
+
+[tool.poetry.group.dev.dependencies]
+black = "^23.7.0"
+isort = "^5.12.0"
+mypy = "^1.4.1"
+flake8 = "^6.0.0"
+pytest = "^7.4.0"
+pytest-cov = "^4.1.0"
+pytest-asyncio = "^0.21.1"
+httpx = "^0.24.0"
+pre-commit = "^3.3.3"
+types-python-jose = "^3.3.4"
+types-passlib = "^1.7.7"
+
+[tool.poetry.group.test.dependencies]
+pytest = "^7.4.0"
+pytest-cov = "^4.1.0"
+pytest-mock = "^3.11.1"
+pytest-asyncio = "^0.21.1"
+factory-boy = "^3.3.0"
+faker = "^19.6.0"
+coverage = "^7.3.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 88
+target-version = ["py311"]
+include = '\.pyi?$'
+
+[tool.isort]
+profile = "black"
+line_length = 88
+multi_line_output = 3
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_functions = "test_*"
+python_classes = "Test*"
+addopts = "--cov=app --cov-report=term-missing --cov-report=xml:coverage.xml"
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+select = ["E", "F", "I", "N", "B", "A", "C4", "SIM", "ERA"]
+ignore = ["E203"]
