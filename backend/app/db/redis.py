@@ -583,3 +583,42 @@ class RateLimiter:
         """
         key = f"rate-limit:user:{user_id}:{action}"
         return await self.check_limit(key, limit, window)
+
+import aioredis
+from ..core.config import settings
+
+class RedisDB:
+    _instance = None
+
+    def __init__(self):
+        self.redis = None
+
+    @classmethod
+    async def get_instance(cls):
+        if not cls._instance:
+            cls._instance = cls()
+            cls._instance.redis = await aioredis.from_url(
+                settings.REDIS_URL,
+                encoding="utf-8",
+                decode_responses=True
+            )
+        return cls._instance
+
+    async def close(self):
+        if self.redis:
+            await self.redis.close()
+
+    async def check_health(self):
+        try:
+            return await self.redis.ping()
+        except Exception:
+            return False
+
+    async def set_cache(self, key: str, value: str, expire: int = None):
+        return await self.redis.set(key, value, ex=expire)
+
+    async def get_cache(self, key: str):
+        return await self.redis.get(key)
+
+    async def delete_cache(self, key: str):
+        return await self.redis.delete(key)

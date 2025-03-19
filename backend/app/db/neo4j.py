@@ -8,9 +8,11 @@ import logging
 import asyncio
 import uuid
 from typing import Any, Dict, List, Optional, Union, Tuple, Callable, TypeVar
-from neo4j import GraphDatabase, AsyncGraphDatabase, AsyncDriver, AsyncSession
-from neo4j.exceptions import ServiceUnavailable, ClientError, TransactionError
+from neo4j import GraphDatabase, AsyncGraphDatabase, AsyncDriver, AsyncSession, Driver
+from neo4j.exceptions import ServiceUnavailable, ClientError, TransactionError, AuthError
 from neo4j.data import Record
+from contextlib import asynccontextmanager
+from app.core.config import settings
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -843,6 +845,47 @@ class Neo4jTransaction:
         return result[0] if result else None
 
 
+class Neo4jDB:
+    def __init__(self):
+        self.driver = AsyncGraphDatabase.driver(
+            settings.NEO4J_URL,
+            auth=(settings.NEO4J_USER, settings.NEO4J_PASSWORD)
+        )
+
+    async def close(self):
+        await self.driver.close()
+
+    async def check_health(self):
+        try:
+            await self.driver.verify_connectivity()
+            return True
+        except Exception:
+            return False
+
+    async def create_node(self, label: str, properties: dict):
+        async with self.driver.session() as session:
+            query = (
+                f"CREATE (n:{label} $props) "
+                "RETURN n"
+            )
+            return await session.run(query, props=properties)
+
+    async def create_relationship(self, from_node_id: str, to_node_id: str, rel_type: str):
+        async with self.driver.session() as session:
+            query = (
+                "MATCH (a), (b) "
+                "WHERE id(a) = $from_id AND id(b) = $to_id "
+                "CREATE (a)-[r:$rel_type]->(b) "
+                "RETURN r"
+            )
+            return await session.run(
+                query,
+                from_id=from_node_id,
+                to_id=to_node_id,
+                rel_type=rel_type
+            )
+
+
 # Singleton instance of the Neo4j client
 neo4j_client: Optional[Neo4jClient] = None
 
@@ -916,3 +959,207 @@ async def get_neo4j() -> Neo4jClient:
         raise ConnectionError("Neo4j client has not been initialized. Call init_neo4j first.")
     
     return neo4j_client
+
+from neo4j import GraphDatabase, Driver, Session, Transaction
+from neo4j.exceptions import ServiceUnavailable, AuthError
+import logging
+from typing import Dict, List, Any, Optional, Callable
+
+from ..core.config import settings
+
+logger = logging.getLogger(__name__)
+
+class Neo4jManager:
+    driver: Driver = None
+
+    def connect_to_database(self):
+        """Connect to Neo4j database."""
+        try:
+            self.driver = GraphDatabase.driver(
+                settings.NEO4J_URI,
+                auth=(settings.NEO4J_USER, settings.NEO4J_PASSWORD)
+            )
+            # Verify the connection
+            with self.driver.session() as session:
+                session.run("MATCH () RETURN 1 LIMIT 1")
+            logger.info("Connected to Neo4j.")
+            
+            # Initialize constraints and indexes
+            self._init_graph_db()
+            logger.info("Neo4j schema initialized.")
+            
+            return self.driver
+        except (ServiceUnavailable, AuthError) as e:
+            logger.error(f"Could not connect to Neo4j: {e}")
+            raise
+
+    def _init_graph_db(self):
+        """Initialize Neo4j database with necessary constraints and indexes."""
+        with self.driver.session() as session:
+            # Constraints for unique node IDs
+            try:
+                session.run("CREATE CONSTRAINT insight_id IF NOT EXISTS ON (i:Insight) ASSERT i.id IS UNIQUE")
+                session.run("CREATE CONSTRAINT user_id IF NOT EXISTS ON (u:User) ASSERT u.id IS UNIQUE")
+                
+                # Indexes for common lookups
+                session.run("CREATE INDEX insight_tags IF NOT EXISTS FOR (i:Insight) ON (i.tags)")
+                session.run("CREATE INDEX insight_created IF NOT EXISTS FOR (i:Insight) ON (i.created_at)")
+                session.run("CREATE INDEX relationship_type IF NOT EXISTS FOR ()-[r:RELATED_TO]-() ON (r.type)")
+            except Exception as e:
+                logger.error(f"Error initializing Neo4j schema: {e}")
+                raise
+
+    def close_database_connection(self):
+        """Close the Neo4j connection."""
+        if self.driver:
+            self.driver.close()
+            logger.info("Neo4j connection closed.")
+
+    def health_check(self) -> bool:
+        """Check if the Neo4j connection is healthy."""
+        try:
+            with self.driver.session() as session:
+                session.run("RETURN 1")
+            return True
+        except Exception as e:
+            logger.error(f"Neo4j health check failed: {e}")
+            return False
+
+    def _run_transaction(self, tx_func: Callable, *args, **kwargs):
+        """Execute a function within a transaction."""
+        max_retries = 3
+        retry_count = 0
+        
+        while retry_count < max_retries:
+            try:
+                with self.driver.session() as session:
+                    return session.execute_write(tx_func, *args, **kwargs)
+            except ServiceUnavailable as e:
+                retry_count += 1
+                if retry_count == max_retries:
+                    logger.error(f"Failed to execute transaction after {max_retries} retries: {e}")
+                    raise
+                logger.warning(f"Neo4j transaction failed, retrying ({retry_count}/{max_retries})")
+    
+    # Node operations
+    def create_insight_node(self, insight_id: str, properties: Dict) -> bool:
+        """Create an Insight node in Neo4j."""
+        def _create_node(tx: Transaction, id: str, props: Dict):
+            # Prepare properties for Neo4j
+            neo4j_props = {k: v for k, v in props.items() if v is not None}
+            neo4j_props["id"] = id
+            
+            query = """
+            CREATE (i:Insight $props)
+            RETURN i.id
+            """
+            result = tx.run(query, props=neo4j_props)
+            return result.single() is not None
+            
+        return self._run_transaction(_create_node, insight_id, properties)
+    
+    def update_insight_node(self, insight_id: str, properties: Dict) -> bool:
+        """Update an Insight node in Neo4j."""
+        def _update_node(tx: Transaction, id: str, props: Dict):
+            # Prepare properties for Neo4j
+            neo4j_props = {k: v for k, v in props.items() if v is not None}
+            
+            query = """
+            MATCH (i:Insight {id: $id})
+            SET i += $props
+            RETURN i.id
+            """
+            result = tx.run(query, id=id, props=neo4j_props)
+            return result.single() is not None
+            
+        return self._run_transaction(_update_node, insight_id, properties)
+    
+    def delete_insight_node(self, insight_id: str) -> bool:
+        """Delete an Insight node and all its relationships."""
+        def _delete_node(tx: Transaction, id: str):
+            query = """
+            MATCH (i:Insight {id: $id})
+            DETACH DELETE i
+            """
+            result = tx.run(query, id=id)
+            return result.consume().counters.nodes_deleted > 0
+            
+        return self._run_transaction(_delete_node, insight_id)
+    
+    # Relationship operations
+    def create_relationship(self, source_id: str, target_id: str, rel_type: str, properties: Dict = None) -> Optional[str]:
+        """Create a relationship between two insights."""
+        if properties is None:
+            properties = {}
+            
+        def _create_relationship(tx: Transaction, src_id: str, tgt_id: str, type: str, props: Dict):
+            query = """
+            MATCH (src:Insight {id: $src_id})
+            MATCH (tgt:Insight {id: $tgt_id})
+            CREATE (src)-[r:RELATED_TO {type: $type}]->(tgt)
+            SET r += $props
+            RETURN id(r) AS rel_id
+            """
+            result = tx.run(query, src_id=src_id, tgt_id=tgt_id, type=type, props=props)
+            record = result.single()
+            return record["rel_id"] if record else None
+            
+        return self._run_transaction(_create_relationship, source_id, target_id, rel_type, properties)
+    
+    def delete_relationship(self, relationship_id: int) -> bool:
+        """Delete a relationship by ID."""
+        def _delete_relationship(tx: Transaction, rel_id: int):
+            query = """
+            MATCH ()-[r]-() WHERE id(r) = $rel_id
+            DELETE r
+            """
+            result = tx.run(query, rel_id=rel_id)
+            return result.consume().counters.relationships_deleted > 0
+            
+        return self._run_transaction(_delete_relationship, relationship_id)
+    
+    # Query operations
+    def get_related_insights(self, insight_id: str, depth: int = 1) -> List[Dict]:
+        """Get insights related to the given insight up to a certain depth."""
+        def _get_related(tx: Transaction, id: str, max_depth: int):
+            query = """
+            MATCH path = (i:Insight {id: $id})-[r:RELATED_TO*1..%d]-(related)
+            RETURN related.id AS id, related.title AS title, related.tags AS tags,
+                   [rel in relationships(path) | {type: rel.type, properties: rel}] AS connections,
+                   length(path) AS depth
+            ORDER BY depth
+            """ % max_depth
+            
+            result = tx.run(query, id=id)
+            return [dict(record) for record in result]
+            
+        with self.driver.session() as session:
+            return session.execute_read(_get_related, insight_id, depth)
+    
+    def get_mindmap_data(self, insight_id: str, depth: int = 2) -> Dict:
+        """Get data for generating a mindmap with the insight at the center."""
+        def _get_mindmap(tx: Transaction, id: str, max_depth: int):
+            query = """
+            MATCH path = (center:Insight {id: $id})-[r:RELATED_TO*0..%d]-(related)
+            WITH collect(DISTINCT center) + collect(DISTINCT related) AS nodes,
+                 collect(DISTINCT relationships(path)) AS rels
+            RETURN 
+                [node IN nodes | {id: node.id, title: node.title, tags: node.tags}] AS nodes,
+                [rel IN REDUCE(s = [], r IN rels | s + r) | {
+                    source: startNode(rel).id, 
+                    target: endNode(rel).id, 
+                    type: rel.type
+                }] AS relationships
+            """ % max_depth
+            
+            result = tx.run(query, id=id)
+            record = result.single()
+            if record:
+                return {"nodes": record["nodes"], "relationships": record["relationships"]}
+            return {"nodes": [], "relationships": []}
+            
+        with self.driver.session() as session:
+            return session.execute_read(_get_mindmap, insight_id, depth)
+
+# Create a singleton instance
+neo4j = Neo4jManager()

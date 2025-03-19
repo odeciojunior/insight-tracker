@@ -3,7 +3,9 @@ import asyncio
 from typing import Any, Dict, List, Optional, Union
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase, AsyncIOMotorCollection
 from pymongo.errors import ConnectionFailure, OperationFailure, ServerSelectionTimeoutError
+from pymongo import IndexModel, ASCENDING, DESCENDING, TEXT
 from bson import ObjectId
+from ..core.config import settings
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -385,6 +387,127 @@ class MongoDBClient:
         cursor = collection.aggregate(pipeline, *args, **kwargs)
         return await self._execute_with_retry(cursor.to_list, length=None)
 
+    async def setup_indexes(self):
+        """Configure indexes for collections to optimize performance."""
+        try:
+            # User collection indexes
+            await self._db.users.create_index([("email", ASCENDING)], unique=True)
+            await self._db.users.create_index([("username", ASCENDING)], unique=True)
+            
+            # Insight collection indexes
+            await self._db.insights.create_index([("user_id", ASCENDING)])
+            await self._db.insights.create_index([("created_at", DESCENDING)])
+            await self._db.insights.create_index([("title", TEXT), ("content", TEXT)])
+            await self._db.insights.create_index([("tags", ASCENDING)])
+            
+            # Embeddings index for vector search
+            await self._db.embeddings.create_index([("insight_id", ASCENDING)], unique=True)
+            await self._db.embeddings.create_index([("user_id", ASCENDING)])
+            
+            logger.info("MongoDB indexes created successfully")
+        except Exception as e:
+            logger.error(f"Error creating MongoDB indexes: {e}")
+            raise
+    
+    async def setup_schema_validation(self):
+        """Setup schema validation for collections."""
+        try:
+            # User schema validation
+            user_validator = {
+                "$jsonSchema": {
+                    "bsonType": "object",
+                    "required": ["email", "username", "hashed_password"],
+                    "properties": {
+                        "email": {
+                            "bsonType": "string",
+                            "pattern": "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
+                        },
+                        "username": {
+                            "bsonType": "string",
+                            "minLength": 3,
+                            "maxLength": 50
+                        },
+                        "hashed_password": {
+                            "bsonType": "string"
+                        },
+                        "is_active": {
+                            "bsonType": "bool"
+                        },
+                        "created_at": {
+                            "bsonType": "date"
+                        }
+                    }
+                }
+            }
+            
+            # Insight schema validation
+            insight_validator = {
+                "$jsonSchema": {
+                    "bsonType": "object",
+                    "required": ["user_id", "title", "content", "created_at"],
+                    "properties": {
+                        "user_id": {
+                            "bsonType": "objectId"
+                        },
+                        "title": {
+                            "bsonType": "string",
+                            "minLength": 1,
+                            "maxLength": 200
+                        },
+                        "content": {
+                            "bsonType": "string"
+                        },
+                        "tags": {
+                            "bsonType": "array",
+                            "items": {
+                                "bsonType": "string"
+                            }
+                        },
+                        "created_at": {
+                            "bsonType": "date"
+                        },
+                        "updated_at": {
+                            "bsonType": "date"
+                        },
+                        "source_type": {
+                            "bsonType": "string",
+                            "enum": ["text", "audio", "image", "manual"]
+                        }
+                    }
+                }
+            }
+            
+            # Apply validators
+            await self._db.command({
+                "collMod": "users",
+                "validator": user_validator,
+                "validationLevel": "moderate"
+            })
+            
+            await self._db.command({
+                "collMod": "insights",
+                "validator": insight_validator,
+                "validationLevel": "moderate"
+            })
+            
+            logger.info("MongoDB schema validation configured successfully")
+        except Exception as e:
+            logger.error(f"Error setting up schema validation: {e}")
+            # Creating collections if they don't exist
+            if "collection does not exist" in str(e):
+                await self._db.create_collection("users", validator=user_validator)
+                await self._db.create_collection("insights", validator=insight_validator)
+                logger.info("Created collections with schema validation")
+            else:
+                raise
+
+    async def initialize(self):
+        """Initialize the MongoDB connection, setup indexes and schema validation."""
+        await self.connect()
+        await self.setup_schema_validation()
+        await self.setup_indexes()
+        logger.info("MongoDB initialized successfully")
+
 # Singleton instance of the MongoDB client
 mongodb_client: Optional[MongoDBClient] = None
 
@@ -453,3 +576,31 @@ async def get_mongodb() -> MongoDBClient:
 def convert_id(id: str) -> ObjectId:
     """Convert string ID to ObjectId."""
     return ObjectId(id)
+
+class MongoDB:
+    client: Optional[AsyncIOMotorClient] = None
+
+    @classmethod
+    async def connect_to_database(cls):
+        cls.client = AsyncIOMotorClient(settings.MONGODB_URL)
+        await cls.client.admin.command('ismaster')
+        return cls.client
+
+    @classmethod
+    async def close_database_connection(cls):
+        if cls.client:
+            cls.client.close()
+
+    @classmethod
+    async def get_database(cls):
+        if not cls.client:
+            await cls.connect_to_database()
+        return cls.client[settings.MONGODB_DB_NAME]
+
+    @classmethod
+    async def check_health(cls):
+        try:
+            await cls.client.admin.command('ping')
+            return True
+        except Exception:
+            return False

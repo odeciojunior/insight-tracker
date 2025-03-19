@@ -67,6 +67,18 @@ class Settings(BaseSettings):
             return v
         raise ValueError(v)
     
+    # Configurações do MongoDB
+    MONGODB_URL: str = "mongodb://localhost:27017"
+    MONGODB_DB_NAME: str = "insight_tracker"
+    
+    # Configurações do Neo4j
+    NEO4J_URL: str = "bolt://localhost:7687"
+    NEO4J_USER: str = "neo4j"
+    NEO4J_PASSWORD: str = "password"
+    
+    # Configurações do Redis
+    REDIS_URL: str = "redis://localhost:6379"
+    
     class Config:
         case_sensitive = True
         env_file = ".env"
