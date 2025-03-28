@@ -202,6 +202,126 @@ class SchemaRegistry:
             result[collection_name] = created_indexes
         return result
 
+    @staticmethod
+    def get_user_schema() -> Dict[str, Any]:
+        return {
+            "bsonType": "object",
+            "required": ["email", "username", "hashed_password"],
+            "properties": {
+                "email": {
+                    "bsonType": "string",
+                    "pattern": "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
+                },
+                "username": {
+                    "bsonType": "string",
+                    "minLength": 3,
+                    "maxLength": 50
+                },
+                "hashed_password": {
+                    "bsonType": "string"
+                },
+                "is_active": {
+                    "bsonType": "bool"
+                },
+                "created_at": {
+                    "bsonType": "date"
+                }
+            }
+        }
+    
+    @staticmethod
+    def get_insight_schema() -> Dict[str, Any]:
+        return {
+            "bsonType": "object",
+            "required": ["user_id", "title", "content", "created_at"],
+            "properties": {
+                "user_id": {
+                    "bsonType": "objectId"
+                },
+                "title": {
+                    "bsonType": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                },
+                "content": {
+                    "bsonType": "string"
+                },
+                "tags": {
+                    "bsonType": "array",
+                    "items": {
+                        "bsonType": "string"
+                    }
+                },
+                "embedding": {
+                    "bsonType": "array",
+                    "items": {
+                        "bsonType": "double"
+                    }
+                },
+                "source_type": {
+                    "bsonType": "string",
+                    "enum": ["text", "audio", "image"]
+                },
+                "created_at": {
+                    "bsonType": "date"
+                },
+                "updated_at": {
+                    "bsonType": "date"
+                }
+            }
+        }
+
+    @staticmethod
+    def get_relationship_schema() -> Dict[str, Any]:
+        return {
+            "bsonType": "object",
+            "required": ["source_id", "target_id", "type", "created_at"],
+            "properties": {
+                "source_id": {
+                    "bsonType": "objectId"
+                },
+                "target_id": {
+                    "bsonType": "objectId"
+                },
+                "type": {
+                    "bsonType": "string"
+                },
+                "strength": {
+                    "bsonType": "double",
+                    "minimum": 0,
+                    "maximum": 1
+                },
+                "metadata": {
+                    "bsonType": "object"
+                },
+                "created_at": {
+                    "bsonType": "date"
+                }
+            }
+        }
+
+    @staticmethod
+    def get_indexes() -> Dict[str, list]:
+        return {
+            "users": [
+                [("email", ASC)],
+                [("username", ASC)],
+                [("created_at", DESC)]
+            ],
+            "insights": [
+                [("user_id", ASC)],
+                [("created_at", DESC)],
+                [("tags", ASC)],
+                [("title", "text"), ("content", "text")]
+            ],
+            "relationships": [
+                [("source_id", ASC)],
+                [("target_id", ASC)],
+                [("type", ASC)],
+                [("created_at", DESC)]
+            ]
+        }
+
 # Define common schema types for reuse in validation schemas
 SCHEMA_TYPES = {
     "string": {"type": "string"},

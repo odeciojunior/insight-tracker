@@ -5,6 +5,7 @@ import uuid
 
 from app.core.config import settings
 from app.core.logging import configure_logging, get_logger, append_context_to_log
+from app.db import init_db
 
 # Configurar logging antes de qualquer outra coisa
 configure_logging()
@@ -28,6 +29,32 @@ if settings.CORS_ORIGINS:
         allow_headers=["*"],
     )
 
+# Initialize database connections
+init_db(app)
+
+# Import and include routers
+from app.api.router import api_router
+app.include_router(api_router, prefix="/api")
+
+from app.api.middleware import RateLimitMiddleware, RequestLoggingMiddleware
+
+# Add middlewares
+app.add_middleware(RequestLoggingMiddleware)
+app.add_middleware(RateLimitMiddleware)
+
+from fastapi.exceptions import RequestValidationError
+from jose.exceptions import JWTError
+from app.core.errors import (
+    APIError,
+    api_error_handler,
+    validation_error_handler,
+    jwt_error_handler
+)
+
+# Register error handlers
+app.add_exception_handler(APIError, api_error_handler)
+app.add_exception_handler(RequestValidationError, validation_error_handler)
+app.add_exception_handler(JWTError, jwt_error_handler)
 
 @app.middleware("http")
 async def logging_middleware(request: Request, call_next):
@@ -64,12 +91,22 @@ async def root():
     logger.info("Endpoint raiz acessado")
     return {"message": "Bem-vindo ao Insight Tracker API"}
 
+from app.core.health import health_checker
 
 @app.get("/health")
 async def health_check():
-    """Endpoint para verificação de saúde da API"""
-    logger.debug("Health check realizado")
-    return {"status": "healthy"}
+    """Get detailed health status of the application."""
+    db_status = await health_checker.check_databases()
+    system_resources = health_checker.check_system_resources()
+    process_info = health_checker.check_process_info()
+    
+    return {
+        "status": "healthy" if all(db_status.values()) else "degraded",
+        "timestamp": datetime.utcnow().isoformat(),
+        "databases": db_status,
+        "system": system_resources,
+        "process": process_info
+    }
 
 
 if __name__ == "__main__":

@@ -9,53 +9,35 @@ from app.core.config import settings
 
 
 def configure_logging() -> None:
-    """
-    Configura o sistema de logging para a aplicação.
-    
-    Em ambiente de desenvolvimento, usa um formato legível por humanos.
-    Em produção, usa JSON para facilitar a ingestão em sistemas de monitoramento.
-    """
+    """Configure structured logging for the application."""
     log_level = getattr(logging, settings.LOG_LEVEL.upper())
     
-    # Processadores comuns para todos os ambientes
-    shared_processors: list[Processor] = [
+    # Common processors
+    shared_processors = [
         structlog.contextvars.merge_contextvars,
         structlog.stdlib.add_logger_name,
         structlog.stdlib.add_log_level,
-        structlog.stdlib.PositionalArgumentsFormatter(),
         structlog.processors.TimeStamper(fmt="iso"),
         structlog.processors.StackInfoRenderer(),
         structlog.processors.format_exc_info,
     ]
     
-    # Configuração específica baseada no ambiente
+    # Environment-specific configuration
     if settings.APP_ENV == "development":
-        # Formatação colorida e legível para desenvolvimento
-        processors = [
-            *shared_processors,
-            structlog.dev.ConsoleRenderer(colors=True, sort_keys=False),
-        ]
+        processors = [*shared_processors, structlog.dev.ConsoleRenderer(colors=True)]
         formatter = structlog.stdlib.ProcessorFormatter(
-            processors=[
-                structlog.stdlib.ProcessorFormatter.remove_processors_meta,
-                structlog.dev.ConsoleRenderer(colors=True, sort_keys=False),
-            ]
+            foreign_pre_chain=shared_processors,
+            processor=structlog.dev.ConsoleRenderer(colors=True)
         )
     else:
-        # Formatação JSON para produção
-        processors = [
-            *shared_processors,
-            structlog.processors.dict_tracebacks,
-            structlog.processors.JSONRenderer(),
-        ]
+        # Production JSON formatting
+        processors = [*shared_processors, structlog.processors.JSONRenderer()]
         formatter = structlog.stdlib.ProcessorFormatter(
-            processors=[
-                structlog.stdlib.ProcessorFormatter.remove_processors_meta,
-                structlog.processors.JSONRenderer(),
-            ]
+            foreign_pre_chain=shared_processors,
+            processor=structlog.processors.JSONRenderer()
         )
-    
-    # Configurar structlog
+
+    # Configure structlog
     structlog.configure(
         processors=processors,
         context_class=dict,
@@ -64,12 +46,12 @@ def configure_logging() -> None:
         cache_logger_on_first_use=True,
     )
     
-    # Configurar logging padrão
-    handler = logging.StreamHandler(sys.stdout)
+    # Configure standard logging
+    handler = logging.StreamHandler()
     handler.setFormatter(formatter)
     root_logger = logging.getLogger()
-    root_logger.setLevel(log_level)
     root_logger.addHandler(handler)
+    root_logger.setLevel(log_level)
     
     # Reduzir verbosidade de alguns loggers externos
     for logger_name in ["uvicorn", "uvicorn.error", "fastapi"]:
@@ -105,3 +87,29 @@ def append_context_to_log(**kwargs: Any) -> None:
     structlog.contextvars.clear_contextvars()
     for key, value in kwargs.items():
         structlog.contextvars.bind_contextvars(**{key: value})
+
+
+def setup_logging() -> None:
+    logging.basicConfig(
+        format="%(message)s",
+        stream=sys.stdout,
+        level=settings.LOG_LEVEL,
+    )
+
+    processors = [
+        structlog.contextvars.merge_contextvars,
+        structlog.processors.add_log_level,
+        structlog.processors.TimeStamper(fmt="iso"),
+    ]
+
+    if settings.LOG_FORMAT == "json":
+        processors.append(structlog.processors.JSONRenderer())
+    else:
+        processors.append(structlog.dev.ConsoleRenderer())
+
+    structlog.configure(
+        processors=processors,
+        logger_factory=structlog.PrintLoggerFactory(),
+        wrapper_class=structlog.make_filtering_bound_logger(logging.getLevelName(settings.LOG_LEVEL)),
+        cache_logger_on_first_use=True,
+    )

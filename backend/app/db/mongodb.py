@@ -579,28 +579,17 @@ def convert_id(id: str) -> ObjectId:
 
 class MongoDB:
     client: Optional[AsyncIOMotorClient] = None
+    db: Optional[AsyncIOMotorDatabase] = None
 
-    @classmethod
-    async def connect_to_database(cls):
-        cls.client = AsyncIOMotorClient(settings.MONGODB_URL)
-        await cls.client.admin.command('ismaster')
-        return cls.client
+    async def connect(self) -> None:
+        logger.info("Connecting to MongoDB...")
+        self.client = AsyncIOMotorClient(settings.MONGODB_URL)
+        self.db = self.client[settings.MONGODB_DB_NAME]
+        logger.info("Connected to MongoDB")
 
-    @classmethod
-    async def close_database_connection(cls):
-        if cls.client:
-            cls.client.close()
+    async def close(self) -> None:
+        if self.client:
+            self.client.close()
+            logger.info("MongoDB connection closed")
 
-    @classmethod
-    async def get_database(cls):
-        if not cls.client:
-            await cls.connect_to_database()
-        return cls.client[settings.MONGODB_DB_NAME]
-
-    @classmethod
-    async def check_health(cls):
-        try:
-            await cls.client.admin.command('ping')
-            return True
-        except Exception:
-            return False
+mongodb = MongoDB()
